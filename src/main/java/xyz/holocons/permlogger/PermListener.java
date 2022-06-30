@@ -1,10 +1,8 @@
 package xyz.holocons.permlogger;
 
 import net.luckperms.api.LuckPerms;
+import net.luckperms.api.event.log.LogNetworkPublishEvent;
 import net.luckperms.api.event.log.LogReceiveEvent;
-import net.luckperms.api.event.node.NodeMutateEvent;
-
-import java.io.IOException;
 
 public class PermListener {
     private final PermLogger plugin;
@@ -16,10 +14,15 @@ public class PermListener {
 
         var eventBus = luckPerms.getEventBus();
         eventBus.subscribe(plugin, LogReceiveEvent.class, this::onLogReceive);
-        eventBus.subscribe(plugin, NodeMutateEvent.class, this::onNodeMutate);
+        eventBus.subscribe(plugin, LogNetworkPublishEvent.class, this::onLogPublish);
     }
 
     public void onLogReceive(LogReceiveEvent event) {
+        if (!plugin.isEnabled()) {
+            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
+            return;
+        }
+
         var message = event.getEntry().getSource().getName() +
                 " executed `" + event.getEntry().getDescription() + "` for " +
                 event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
@@ -29,7 +32,18 @@ public class PermListener {
         debouncer.postMessage(message);
     }
 
-    public void onNodeMutate(NodeMutateEvent event) {
-        plugin.getLogger().warn("Latest changes to permissions was not logged! Please log it through #staff-log.");
+    public void onLogPublish(LogNetworkPublishEvent event) {
+        if (!plugin.isEnabled()) {
+            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
+            return;
+        }
+
+        var message = event.getEntry().getSource().getName() +
+                " executed `" + event.getEntry().getDescription() + "` for " +
+                event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
+                "\\n";
+
+        plugin.getLogger().info("Posting to discord webhook with content: " + message);
+        debouncer.postMessage(message);
     }
 }

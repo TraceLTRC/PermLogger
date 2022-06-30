@@ -75,6 +75,11 @@ public class PermLogger {
         saveConfig(this.config);
     }
 
+    public void reloadConfig() {
+        this.config = loadConfig();
+        this.endpoint = this.config.getNode("webhook").getString("INSERT WEBHOOK HERE");
+    }
+
     public ConfigurationNode loadConfig() {
         try {
             return loader.load();
@@ -107,5 +112,9 @@ public class PermLogger {
 
     public boolean isEnabled() {
         return status;
+    }
+
+    public void setStatus(boolean status) {
+        this.status = status;
     }
 }
