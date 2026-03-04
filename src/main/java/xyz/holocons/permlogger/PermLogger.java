@@ -15,16 +15,12 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
-import ninja.leaping.configurate.ConfigurationNode;
-import ninja.leaping.configurate.commented.CommentedConfigurationNode;
-import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
-import ninja.leaping.configurate.yaml.YAMLConfigurationLoader;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 import org.slf4j.Logger;
-import org.yaml.snakeyaml.DumperOptions;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Plugin(
         id = "permlogger",
@@ -54,8 +50,8 @@ public class PermLogger {
         this.logger = logger;
         this.server = server;
         this.loader = HoconConfigurationLoader.builder()
-                .setPath(Paths.get(configDirectory.toString(), "config.hocon"))
-                .setDefaultOptions(configurationOptions -> configurationOptions.withShouldCopyDefaults(true))
+                .path(configDirectory.resolve("config.hocon"))
+                .defaultOptions(options -> options.shouldCopyDefaults(true))
                 .build();
     }
 
@@ -63,7 +59,7 @@ public class PermLogger {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         this.luckPermsAPI = LuckPermsProvider.get();
         this.config = loadConfig();
-        this.endpoint = config.getNode("webhook").getString("INSERT WEBHOOK HERE");
+        this.endpoint = config.node("webhook").getString("INSERT WEBHOOK HERE");
         this.listener = new PermListener(this, luckPermsAPI);
 
         var commandMeta = server.getCommandManager().metaBuilder("permlogger").build();
@@ -77,7 +73,7 @@ public class PermLogger {
 
     public void reloadConfig() {
         this.config = loadConfig();
-        this.endpoint = this.config.getNode("webhook").getString("INSERT WEBHOOK HERE");
+        this.endpoint = this.config.node("webhook").getString("INSERT WEBHOOK HERE");
     }
 
     public ConfigurationNode loadConfig() {
