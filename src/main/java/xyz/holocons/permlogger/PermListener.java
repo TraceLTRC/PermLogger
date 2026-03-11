@@ -20,39 +20,50 @@ public class PermListener {
         eventBus.subscribe(plugin, LogNetworkPublishEvent.class, this::onLogPublish);
     }
 
-    private String escapeMarkdown(String input) {
-        return input.replace("_", "\\\\_");
-    }
-
     private void onLogReceive(LogReceiveEvent event) {
-        if (!plugin.isEnabled()) {
-            plugin.getLogger().warn("A permission changed, but the plugin is disabled!");
-            return;
-        }
-
-        var source = escapeMarkdown(event.getEntry().getSource().getName());
-        var description = "`" + event.getEntry().getDescription() + "`";
-        var target = event.getEntry().getTarget().getType() + "#"
-                + escapeMarkdown(event.getEntry().getTarget().getName());
-        var message = source + " executed " + description + " for " + target + "\\n";
-
-        plugin.getLogger().info("Posting to webhook: " + message);
-        debouncer.postMessage(message);
+        handleLogEntry(LogEntry.fromEvent(event));
     }
 
     private void onLogPublish(LogNetworkPublishEvent event) {
-        if (!plugin.isEnabled()) {
+        handleLogEntry(LogEntry.fromEvent(event));
+    }
+
+    private void handleLogEntry(LogEntry entry) {
+        if (plugin.isEnabled()) {
+            plugin.getLogger().info("Posting to webhook: " + entry.toString());
+            debouncer.postMessage(entry.toDiscordMessage());
+        } else {
             plugin.getLogger().warn("A permission changed, but the plugin is disabled!");
-            return;
+        }
+    }
+
+    private record LogEntry(String source, String action, String target) {
+
+        public static LogEntry fromEvent(LogReceiveEvent event) {
+            var source = event.getEntry().getSource().getName();
+            var action = "`" + event.getEntry().getDescription() + "`";
+            var target = event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName();
+            return new LogEntry(source, action, target);
         }
 
-        var source = escapeMarkdown(event.getEntry().getSource().getName());
-        var description = "`" + event.getEntry().getDescription() + "`";
-        var target = event.getEntry().getTarget().getType() + "#"
-                + escapeMarkdown(event.getEntry().getTarget().getName());
-        var message = source + " executed " + description + " for " + target + "\\n";
+        private static LogEntry fromEvent(LogNetworkPublishEvent event) {
+            var source = event.getEntry().getSource().getName();
+            var action = "`" + event.getEntry().getDescription() + "`";
+            var target = event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName();
+            return new LogEntry(source, action, target);
+        }
 
-        plugin.getLogger().info("Posting to webhook: " + message);
-        debouncer.postMessage(message);
+        private static String escapeMarkdown(String input) {
+            return input.replace("_", "\\\\_");
+        }
+
+        public String toDiscordMessage() {
+            return escapeMarkdown(toString()) + "\\n";
+        }
+
+        @Override
+        public String toString() {
+            return source + " executed " + action + " for " + target;
+        }
     }
 }
