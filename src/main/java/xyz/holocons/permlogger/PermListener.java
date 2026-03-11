@@ -1,6 +1,6 @@
 package xyz.holocons.permlogger;
 
-import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.event.log.LogNetworkPublishEvent;
 import net.luckperms.api.event.log.LogReceiveEvent;
 
@@ -8,10 +8,13 @@ public class PermListener {
     private final PermLogger plugin;
     private final WebhookDebouncer debouncer;
 
-    public PermListener(PermLogger plugin, LuckPerms luckPerms) {
+    public PermListener(PermLogger plugin) {
         this.plugin = plugin;
         this.debouncer = new WebhookDebouncer(plugin, 5000);
+    }
 
+    public void subscribeToEvents() {
+        var luckPerms = LuckPermsProvider.get();
         var eventBus = luckPerms.getEventBus();
         eventBus.subscribe(plugin, LogReceiveEvent.class, this::onLogReceive);
         eventBus.subscribe(plugin, LogNetworkPublishEvent.class, this::onLogPublish);

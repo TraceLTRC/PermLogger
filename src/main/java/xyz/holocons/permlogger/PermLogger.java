@@ -1,11 +1,6 @@
 package xyz.holocons.permlogger;
 
 import com.google.inject.Inject;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.tree.LiteralCommandNode;
-import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -13,13 +8,13 @@ import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.LuckPermsProvider;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.nio.file.Path;
 
 @Plugin(
@@ -39,11 +34,9 @@ public class PermLogger {
     private final ProxyServer server;
     private final HoconConfigurationLoader loader;
 
-    private LuckPerms luckPermsAPI;
     private ConfigurationNode config;
-    private String endpoint;
-    private PermListener listener;
-    private boolean status = true;
+    private URL webhookURL;
+    private boolean enabled;
 
     @Inject
     public PermLogger(ProxyServer server, Logger logger, @DataDirectory Path configDirectory) {
@@ -57,10 +50,10 @@ public class PermLogger {
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        this.luckPermsAPI = LuckPermsProvider.get();
-        this.config = loadConfig();
-        this.endpoint = config.node("webhook").getString("INSERT WEBHOOK HERE");
-        this.listener = new PermListener(this, luckPermsAPI);
+        reloadConfig();
+
+        var listener = new PermListener(this);
+        listener.subscribeToEvents();
 
         var commandMeta = server.getCommandManager().metaBuilder("permlogger").build();
         server.getCommandManager().register(commandMeta, new CommandHandler(this));
@@ -73,15 +66,21 @@ public class PermLogger {
 
     public void reloadConfig() {
         this.config = loadConfig();
-        this.endpoint = this.config.node("webhook").getString("INSERT WEBHOOK HERE");
+        var webhookString = config.node("webhook").getString("INSERT WEBHOOK HERE");
+        try {
+            this.webhookURL = URI.create(webhookString).toURL();
+            this.enabled = true;
+        } catch (Exception e) {
+            logger.error("Invalid webhook URL in config: " + webhookString, e);
+            this.enabled = false;
+        }
     }
 
     public ConfigurationNode loadConfig() {
         try {
             return loader.load();
         } catch (IOException e) {
-            logger.error("Failed to load config!", e);
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to load config!", e);
         }
     }
 
@@ -89,13 +88,12 @@ public class PermLogger {
         try {
             loader.save(root);
         } catch (IOException e) {
-            logger.error("Failed to save config!", e);
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to save config!", e);
         }
     }
 
-    public String getEndpoint() {
-        return endpoint;
+    public URL getWebhookURL() {
+        return webhookURL;
     }
 
     public ProxyServer getServer() {
@@ -107,10 +105,10 @@ public class PermLogger {
     }
 
     public boolean isEnabled() {
-        return status;
+        return enabled;
     }
 
-    public void setStatus(boolean status) {
-        this.status = status;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }

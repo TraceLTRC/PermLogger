@@ -9,8 +9,6 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,21 +22,11 @@ import java.util.Set;
  */
 public class DiscordWebhook {
 
-    private final String url;
     private String content;
     private String username;
     private String avatarUrl;
     private boolean tts;
     private List<EmbedObject> embeds = new ArrayList<>();
-
-    /**
-     * Constructs a new DiscordWebhook instance
-     *
-     * @param url The webhook URL obtained in Discord
-     */
-    public DiscordWebhook(String url) {
-        this.url = url;
-    }
 
     public void setContent(String content) {
         this.content = content;
@@ -60,7 +48,7 @@ public class DiscordWebhook {
         this.embeds.add(embed);
     }
 
-    public void execute() throws IOException {
+    public void execute(URL url) throws IOException {
         if (this.content == null && this.embeds.isEmpty()) {
             throw new IllegalArgumentException("Set content or add at least one EmbedObject");
         }
@@ -146,7 +134,6 @@ public class DiscordWebhook {
             json.put("embeds", embedObjects.toArray());
         }
 
-        URL url = new URL(this.url);
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
         connection.addRequestProperty("Content-Type", "application/json");
         connection.addRequestProperty("User-Agent", "Java-DiscordWebhook-BY-Gelox_");

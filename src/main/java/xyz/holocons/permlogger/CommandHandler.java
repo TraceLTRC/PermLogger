@@ -1,6 +1,5 @@
 package xyz.holocons.permlogger;
 
-import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -34,11 +33,11 @@ public class CommandHandler implements SimpleCommand {
                     plugin.getLogger().info("Plugin reloaded!");
                 }
                 case "on" -> {
-                    plugin.setStatus(true);
+                    plugin.setEnabled(true);
                     plugin.getLogger().info("Enabled plugin!");
                 }
                 case "off" -> {
-                    plugin.setStatus(false);
+                    plugin.setEnabled(false);
                     plugin.getLogger().info("Disabled plugin!");
                 }
 
@@ -70,7 +69,7 @@ public class CommandHandler implements SimpleCommand {
         component.append(
                 Component.newline(),
                 Component.text("Current endpoint: "),
-                Component.text(plugin.getEndpoint()).color(NamedTextColor.DARK_AQUA)
+                Component.text(plugin.getWebhookURL().toString()).color(NamedTextColor.DARK_AQUA)
         );
         return component.build();
     }

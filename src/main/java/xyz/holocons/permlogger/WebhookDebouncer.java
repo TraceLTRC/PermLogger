@@ -4,7 +4,6 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import com.velocitypowered.api.scheduler.TaskStatus;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -14,7 +13,7 @@ public class WebhookDebouncer {
 
     private final long delay;
     private final PermLogger plugin;
-    private final DiscordWebhook endpoint;
+    private final DiscordWebhook webhook;
     private final StringBuilder messageQueue = new StringBuilder();
 
     private ScheduledTask task;
@@ -22,9 +21,9 @@ public class WebhookDebouncer {
     public WebhookDebouncer(PermLogger plugin, long delay) {
         this.delay = delay;
         this.plugin = plugin;
-        this.endpoint = new DiscordWebhook(plugin.getEndpoint());
-        this.endpoint.setUsername("Permission Logger");
-        this.endpoint.setAvatarUrl("https://wiki.holocons.xyz/hlc_logo.png");
+        this.webhook = new DiscordWebhook();
+        this.webhook.setUsername("Permission Logger");
+        this.webhook.setAvatarUrl("https://wiki.holocons.xyz/hlc_logo.png");
     }
 
     /**
@@ -46,9 +45,9 @@ public class WebhookDebouncer {
         }
 
         task = plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            endpoint.setContent(messageQueue.toString());
+            webhook.setContent(messageQueue.toString());
             try {
-                endpoint.execute();
+                webhook.execute(plugin.getWebhookURL());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
