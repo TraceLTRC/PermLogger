@@ -17,33 +17,39 @@ public class PermListener {
         eventBus.subscribe(plugin, LogNetworkPublishEvent.class, this::onLogPublish);
     }
 
-    public void onLogReceive(LogReceiveEvent event) {
+    private String escapeMarkdown(String input) {
+        return input.replace("_", "\\\\_");
+    }
+
+    private void onLogReceive(LogReceiveEvent event) {
         if (!plugin.isEnabled()) {
-            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
+            plugin.getLogger().warn("A permission changed, but the plugin is disabled!");
             return;
         }
 
-        var message = event.getEntry().getSource().getName() +
-                " executed `" + event.getEntry().getDescription() + "` for " +
-                event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
-                "\\n";
+        var source = escapeMarkdown(event.getEntry().getSource().getName());
+        var description = "`" + event.getEntry().getDescription() + "`";
+        var target = event.getEntry().getTarget().getType() + "#"
+                + escapeMarkdown(event.getEntry().getTarget().getName());
+        var message = source + " executed " + description + " for " + target + "\\n";
 
-        plugin.getLogger().info("Posting to discord webhook with content: " + message);
+        plugin.getLogger().info("Posting to webhook: " + message);
         debouncer.postMessage(message);
     }
 
-    public void onLogPublish(LogNetworkPublishEvent event) {
+    private void onLogPublish(LogNetworkPublishEvent event) {
         if (!plugin.isEnabled()) {
-            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
+            plugin.getLogger().warn("A permission changed, but the plugin is disabled!");
             return;
         }
 
-        var message = event.getEntry().getSource().getName() +
-                " executed `" + event.getEntry().getDescription() + "` for " +
-                event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
-                "\\n";
+        var source = escapeMarkdown(event.getEntry().getSource().getName());
+        var description = "`" + event.getEntry().getDescription() + "`";
+        var target = event.getEntry().getTarget().getType() + "#"
+                + escapeMarkdown(event.getEntry().getTarget().getName());
+        var message = source + " executed " + description + " for " + target + "\\n";
 
-        plugin.getLogger().info("Posting to discord webhook with content: " + message);
+        plugin.getLogger().info("Posting to webhook: " + message);
         debouncer.postMessage(message);
     }
 }
