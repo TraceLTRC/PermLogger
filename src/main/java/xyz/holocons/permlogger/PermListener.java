@@ -1,6 +1,6 @@
 package xyz.holocons.permlogger;
 
-import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.event.log.LogNetworkPublishEvent;
 import net.luckperms.api.event.log.LogReceiveEvent;
 
@@ -8,42 +8,62 @@ public class PermListener {
     private final PermLogger plugin;
     private final WebhookDebouncer debouncer;
 
-    public PermListener(PermLogger plugin, LuckPerms luckPerms) {
+    public PermListener(PermLogger plugin) {
         this.plugin = plugin;
         this.debouncer = new WebhookDebouncer(plugin, 5000);
+    }
 
+    public void subscribeToEvents() {
+        var luckPerms = LuckPermsProvider.get();
         var eventBus = luckPerms.getEventBus();
         eventBus.subscribe(plugin, LogReceiveEvent.class, this::onLogReceive);
         eventBus.subscribe(plugin, LogNetworkPublishEvent.class, this::onLogPublish);
     }
 
-    public void onLogReceive(LogReceiveEvent event) {
-        if (!plugin.isEnabled()) {
-            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
-            return;
-        }
-
-        var message = event.getEntry().getSource().getName() +
-                " executed `" + event.getEntry().getDescription() + "` for " +
-                event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
-                "\\n";
-
-        plugin.getLogger().info("Posting to discord webhook with content: " + message);
-        debouncer.postMessage(message);
+    private void onLogReceive(LogReceiveEvent event) {
+        handleLogEntry(LogEntry.fromEvent(event));
     }
 
-    public void onLogPublish(LogNetworkPublishEvent event) {
-        if (!plugin.isEnabled()) {
-            plugin.getLogger().warn("Permission changed detected, but the plugin is disabled!");
-            return;
+    private void onLogPublish(LogNetworkPublishEvent event) {
+        handleLogEntry(LogEntry.fromEvent(event));
+    }
+
+    private void handleLogEntry(LogEntry entry) {
+        if (plugin.isEnabled()) {
+            plugin.getLogger().info("Posting to webhook: " + entry.toString());
+            debouncer.postMessage(entry.toDiscordMessage());
+        } else {
+            plugin.getLogger().warn("A permission changed, but the plugin is disabled!");
+        }
+    }
+
+    private record LogEntry(String source, String action, String target) {
+
+        public static LogEntry fromEvent(LogReceiveEvent event) {
+            var source = event.getEntry().getSource().getName();
+            var action = "`" + event.getEntry().getDescription() + "`";
+            var target = event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName();
+            return new LogEntry(source, action, target);
         }
 
-        var message = event.getEntry().getSource().getName() +
-                " executed `" + event.getEntry().getDescription() + "` for " +
-                event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName() +
-                "\\n";
+        private static LogEntry fromEvent(LogNetworkPublishEvent event) {
+            var source = event.getEntry().getSource().getName();
+            var action = "`" + event.getEntry().getDescription() + "`";
+            var target = event.getEntry().getTarget().getType() + "#" + event.getEntry().getTarget().getName();
+            return new LogEntry(source, action, target);
+        }
 
-        plugin.getLogger().info("Posting to discord webhook with content: " + message);
-        debouncer.postMessage(message);
+        private static String escapeMarkdown(String input) {
+            return input.replace("_", "\\\\_");
+        }
+
+        public String toDiscordMessage() {
+            return escapeMarkdown(toString()) + "\\n";
+        }
+
+        @Override
+        public String toString() {
+            return source + " executed " + action + " for " + target;
+        }
     }
 }
