@@ -54,23 +54,24 @@ public class CommandHandler implements SimpleCommand {
 
     public Component createOverview() {
         final var component = Component.text();
-        component.append(Component.text("PermLogger is "));
-
-        if (plugin.isEnabled()) {
-            component.append(
-                    Component.text("ENABLED").color(NamedTextColor.GREEN)
-            );
-        } else {
-            component.append(
-                    Component.text("DISABLED").color(NamedTextColor.RED)
-            );
-        }
-
         component.append(
+                Component.text("PermLogger is "),
+                isEnabled(),
                 Component.newline(),
-                Component.text("Current endpoint: "),
-                Component.text(plugin.getWebhookURL().toString()).color(NamedTextColor.DARK_AQUA)
-        );
+                Component.text("Webhook: "),
+                getWebhookURL());
         return component.build();
+    }
+
+    private Component isEnabled() {
+        return plugin.isEnabled()
+                ? Component.text("ENABLED").color(NamedTextColor.GREEN)
+                : Component.text("DISABLED").color(NamedTextColor.RED);
+    }
+
+    private Component getWebhookURL() {
+        return plugin.getWebhookURL() != null
+                ? Component.text(plugin.getWebhookURL().toString()).color(NamedTextColor.DARK_AQUA)
+                : Component.text("Unset");
     }
 }
