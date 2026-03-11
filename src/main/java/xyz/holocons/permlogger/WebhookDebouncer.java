@@ -13,39 +13,44 @@ public class WebhookDebouncer {
     private final long delay;
     private final PermLogger plugin;
     private final DiscordWebhook webhook;
-    private final StringBuilder messageQueue = new StringBuilder();
+    private final StringBuilder queue;
 
+    private int lastMessageHash;
     private ScheduledTask task;
 
     public WebhookDebouncer(PermLogger plugin, long delay) {
         this.delay = delay;
         this.plugin = plugin;
         this.webhook = new DiscordWebhook();
+        this.queue = new StringBuilder();
         this.webhook.setUsername("Permission Logger");
         this.webhook.setAvatarUrl("https://wiki.holocons.xyz/hlc_logo.png");
+        this.task = scheduleTask(() -> {
+        });
     }
 
-    /**
-     * Post a message to discord after delay. Appends new messages if this function is called again before the message
-     * gets posted
-     * @param message The message to post
-     */
-    public void postMessage(String message) {
-        if (task != null) { // There is a message queued
-            if (task.status() == TaskStatus.FINISHED) { // Message has been posted to discord, create a new task
-                messageQueue.setLength(0);
-                messageQueue.append(message);
-            } else { // Message is on queue, cancel it and recreate the task.
-                task.cancel();
-                messageQueue.append(message);
-            }
-        } else { // No message has been queued, create a new task
-            messageQueue.append(message);
-        }
+    private ScheduledTask scheduleTask(Runnable runnable) {
+        return plugin.getServer().getScheduler()
+                .buildTask(plugin, runnable)
+                .delay(delay, TimeUnit.MILLISECONDS)
+                .schedule();
+    }
 
-        task = plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            webhook.setContent(messageQueue.toString());
+    public void postMessage(String message) {
+        if (message.hashCode() == lastMessageHash) {
+            return;
+        }
+        lastMessageHash = message.hashCode();
+
+        queue.append(message);
+
+        if (task.status() == TaskStatus.SCHEDULED) {
+            task.cancel();
+        }
+        task = scheduleTask(() -> {
+            webhook.setContent(queue.toString());
+            queue.setLength(0);
             webhook.execute(plugin.getWebhookURL());
-        }).delay(delay, TimeUnit.MILLISECONDS).schedule();
+        });
     }
 }
