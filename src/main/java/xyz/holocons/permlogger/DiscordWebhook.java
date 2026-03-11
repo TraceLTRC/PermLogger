@@ -48,11 +48,7 @@ public class DiscordWebhook {
         this.embeds.add(embed);
     }
 
-    public void execute(URL url) throws IOException {
-        if (this.content == null && this.embeds.isEmpty()) {
-            throw new IllegalArgumentException("Set content or add at least one EmbedObject");
-        }
-
+    private JSONObject toJSONObject() {
         JSONObject json = new JSONObject();
 
         json.put("content", this.content);
@@ -134,19 +130,35 @@ public class DiscordWebhook {
             json.put("embeds", embedObjects.toArray());
         }
 
-        HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
-        connection.addRequestProperty("Content-Type", "application/json");
-        connection.addRequestProperty("User-Agent", "Java-DiscordWebhook-BY-Gelox_");
-        connection.setDoOutput(true);
-        connection.setRequestMethod("POST");
+        return json;
+    }
 
-        OutputStream stream = connection.getOutputStream();
-        stream.write(json.toString().getBytes(StandardCharsets.UTF_8));
-        stream.flush();
-        stream.close();
+    public void execute(URL url) {
+        if (this.content == null && this.embeds.isEmpty()) {
+            return;
+        }
 
-        connection.getInputStream().close(); //I'm not sure why but it doesn't work without getting the InputStream
-        connection.disconnect();
+        JSONObject json = toJSONObject();
+
+        try {
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.addRequestProperty("Content-Type", "application/json");
+            connection.addRequestProperty("User-Agent", "Java-DiscordWebhook-BY-Gelox_");
+            connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+
+            try (OutputStream stream = connection.getOutputStream()) {
+                stream.write(json.toString().getBytes(StandardCharsets.UTF_8));
+            }
+
+            if (connection.getResponseCode() != HttpsURLConnection.HTTP_NO_CONTENT) {
+                throw new IOException("Discord API responded with status code " + connection.getResponseCode());
+            }
+
+            connection.disconnect();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to execute webhook", e);
+        }
     }
 
     public static class EmbedObject {

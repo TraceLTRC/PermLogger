@@ -3,7 +3,6 @@ package xyz.holocons.permlogger;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import com.velocitypowered.api.scheduler.TaskStatus;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,11 +45,7 @@ public class WebhookDebouncer {
 
         task = plugin.getServer().getScheduler().buildTask(plugin, () -> {
             webhook.setContent(messageQueue.toString());
-            try {
-                webhook.execute(plugin.getWebhookURL());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            webhook.execute(plugin.getWebhookURL());
         }).delay(delay, TimeUnit.MILLISECONDS).schedule();
     }
 }
